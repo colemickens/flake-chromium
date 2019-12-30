@@ -1,7 +1,7 @@
 { stdenv, stdenvNoCC, lib, fetchgit, fetchurl, runCommand
-, python2, gn, ninja, llvmPackages_9, nodejs, jre8, bison, gperf, pkg-config, protobuf
+, python2, gn, ninja, llvmPackages_latest, nodejs, bison, gperf, pkg-config, protobuf
 , dbus, systemd, glibc, at-spi2-atk, atk, at-spi2-core, nspr, nss, pciutils, utillinux, kerberos, gdk-pixbuf
-, glib, gtk3, alsaLib, pulseaudio, xdg_utils, libXScrnSaver, libXcursor, libXtst, libGL, libXdamage
+, glib, gtk3, alsaLib, pulseaudio, xdg_utils, libXScrnSaver, libXcursor, libXtst, libGLU, libGL, libXdamage
 , libxkbcommon, libglvnd, makeWrapper, ed
 , customGnFlags ? {}
 }:
@@ -54,6 +54,7 @@ let
         link_pulseaudio = gnFlags.use_pulseaudio;
         enable_widevine = false;
         enable_swiftshader = false;
+        closure_compile = false; # Disable type-checking for the Web UI to avoid a Java dependency.
 
         # enable support for the H.264 codec
         proprietary_codecs = true;
@@ -100,10 +101,10 @@ let
       pname = "chromium-git";
       inherit version src;
 
-      nativeBuildInputs = [ gn ninja python2 pkg-config jre8 gperf bison ];
+      nativeBuildInputs = [ gn ninja python2 pkg-config gperf bison ];
       buildInputs = [
         dbus at-spi2-atk atk at-spi2-core nspr nss pciutils utillinux kerberos
-        gdk-pixbuf glib gtk3 alsaLib libXScrnSaver libXcursor libXtst libGL libXdamage
+        gdk-pixbuf glib gtk3 alsaLib libXScrnSaver libXcursor libXtst libGLU libGL libXdamage
         libxkbcommon
       ] ++ lib.optionals gnFlags.use_pulseaudio [
         pulseaudio
@@ -147,12 +148,15 @@ let
           patchShebangs --build .
 
           mkdir -p third_party/node/linux/node-linux-x64/bin
-          ln -s --force ${nodejs}/bin/node                    third_party/node/linux/node-linux-x64/bin/node      || true
+          ln -s --force ${nodejs}/bin/node                                third_party/node/linux/node-linux-x64/bin/node      || true
+
+          mkdir -p buildtools/linux64
+          ln -s --force ${llvmPackages_latest.clang.cc}/bin/clang-format  buildtools/linux64/clang-format 
 
           mkdir -p third_party/llvm-build/Release+Asserts/bin
-          ln -s --force ${llvmPackages_9.clang}/bin/clang     third_party/llvm-build/Release+Asserts/bin/clang    || true
-          ln -s --force ${llvmPackages_9.clang}/bin/clang++   third_party/llvm-build/Release+Asserts/bin/clang++  || true
-          ln -s --force ${llvmPackages_9.llvm}/bin/llvm-ar    third_party/llvm-build/Release+Asserts/bin/llvm-ar  || true
+          ln -s --force ${llvmPackages_latest.clang}/bin/clang            third_party/llvm-build/Release+Asserts/bin/clang    || true
+          ln -s --force ${llvmPackages_latest.clang}/bin/clang++          third_party/llvm-build/Release+Asserts/bin/clang++  || true
+          ln -s --force ${llvmPackages_latest.llvm}/bin/llvm-ar           third_party/llvm-build/Release+Asserts/bin/llvm-ar  || true
 
           echo 'build_with_chromium = true'                > build/config/gclient_args.gni
           echo 'checkout_android = false'                 >> build/config/gclient_args.gni
@@ -160,6 +164,7 @@ let
           echo 'checkout_nacl = false'                    >> build/config/gclient_args.gni
           echo 'checkout_openxr = false'                  >> build/config/gclient_args.gni
           echo 'checkout_oculus_sdk = false'              >> build/config/gclient_args.gni
+          echo 'checkout_google_benchmark = false'        >> build/config/gclient_args.gni
         )
       '';
 
@@ -195,7 +200,8 @@ let
       };
     };
 
-  wrap = chromiumBuild:
+  mkWrappedChromium = { version, customGnFlags }:
+    let chromiumBuild = (common { inherit version customGnFlags; }); in
     stdenv.mkDerivation {
       name = "chromium-git-wrapped";
       version = chromiumBuild.version;
@@ -236,14 +242,19 @@ let
     '';
   };
 in
-  wrap ( common {
-    version = (import ./metadata.nix).version;
-    customGnFlags = {
-      use_ozone = true;
-      ozone_platform = "wayland";
-      ozone_platform_headless = false;
-      ozone_platform_wayland = true;
-      ozone_platform_x11 = true;
+  {
+    chromium-git_82 = common { version = "82.0.4050.1";   };
+
+    chromium-git_82-wayland = mkWrappedChromium {
+      #version = (import ./metadata.nix).version;
+      version = "82.0.4050.1";
+      customGnFlags = {
+        use_ozone = true;
+        ozone_platform = "wayland";
+        ozone_platform_headless = false;
+        ozone_platform_wayland = true;
+        ozone_platform_x11 = true;
+      };
     };
-  });
+  }
 

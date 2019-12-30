@@ -1,9 +1,9 @@
-self: pkgs:
+{ pkgs }:
+
 let
-chromiumPkgs = {
-  # chromium
-  chromium-git = (pkgs.callPackages ./pkgs/chromium-git {}).chromium-git;
-};
+  c = pkgs.callPackages ./pkgs/chromium-git {};
 in
-  chromiumPkgs // { inherit chromiumPkgs; }
+  {
+    chromium-dev-wayland = c.chromium-git_82-wayland;
+  }
 

@@ -8,7 +8,6 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 # keep track of what we build for the README
 pkgentries=(); nixpkgentries=();
 cache="nixpkgs-wayland";
-build_attr="${1:-"all"}"
 
 up=0 # updated_performed # up=$(( $up + 1 ))
 
@@ -121,27 +120,14 @@ for p in nixpkgs/*; do
   update "nixpkgs" "${p}"
 done
 
-for p in pkgs/*; do
-  update "pkgs" "${p}"
-done
+set +e; version="$(git ls-remote --tag https://github.com/chromium/chromium | cut -d'	' -f2 | \
+  rg "refs/tags/(\d+.\d+.\d+.\d+)" -r '$1' | sort -hr | head -1)"; set -e
 
-update_readme
-
-cachix push -w "${cache}" &
-CACHIX_PID="$!"
-trap "kill ${CACHIX_PID}" EXIT
-
-#if [[ $up -lt 1 ]]; then
-  # if we didn't update any revs, there's nothing to do
-  # don't bother building (and if on CI, dling everything for no reason)
-
-  # TODO: maybe on CI we can invoke nix in a way to do a no-op if subsitutions exist
-  # TODO: file a bug for this, see if there was any irc convo after asking on 2019-11-18@00:40:33
-#  echo "nothing to build, so exitting"
-#  exit 0
-#fi
+echo "{ version = \"${version}\"; }" > "./pkgs/chromium-git/metadata.nix"
+if [[ ! -f "pkgs/chromium-git/vendor-${version}.nix" ]]; then
+  (cd pkgs/chromium-git; ./mk-vendor-file.pl "${version}";)
+fi
 
 nix-build build.nix \
   --no-out-link --keep-going \
-  --attr "${build_attr}" \
   | cachix push "${cache}"
