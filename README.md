@@ -15,6 +15,12 @@ aka, "Chrome on Wayland" for Linux, or at least NixOS users.
 
 ## Usage
 
+Quick test:
+
+```nix-env -iA chromium-dev-wayland -f "https://github.com/colemickens/nixpkgs-chromium/archive/master.tar.gz"```
+
+Using in your nixos `configuration.nix`:
+
 ```nix
 { pkgs, ...}:
 
