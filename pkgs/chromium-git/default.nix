@@ -243,11 +243,8 @@ let
   };
 in
   {
-    chromium-git_82 = common { version = "82.0.4050.1";   };
-
-    chromium-git_82-wayland = mkWrappedChromium {
-      #version = (import ./metadata.nix).version;
-      version = "82.0.4050.1";
+    chromium-git-wayland = mkWrappedChromium {
+      version = (import ./metadata.nix).version;
       customGnFlags = {
         use_ozone = true;
         ozone_platform = "wayland";
