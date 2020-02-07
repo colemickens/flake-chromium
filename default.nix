@@ -5,5 +5,6 @@ let
 in
   {
     chromium-dev-wayland = c.chromium-git-wayland;
+    chromium-dev-wayland-gtk = c.chromium-git-wayland-gtk;
   }
 
