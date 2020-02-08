@@ -5,13 +5,16 @@ and [nixpkgs-graphics](https://github.com/colemickens/nixpkgs-graphics))
 
 ## Overview
 
-A package-set containing `chromium-git`, a build of Chromium with Ozone (Wayland/X11) enabled.
+This is a package-set for NixOS or nixpkgs that contains builds of Chromium for Wayland (aka Chromium built with the X11 and Wayland backends for Ozone).
 
-I will try to build this frequently against `nixos-unstable` to minimize the extra libs on your system, but
-since this is a package-set instead of an overlay, you shouldn't be hit with day-long-rebuilds if you happen
-to advance the `nixos-unstable` channel before I get a chance to perform a build.
+I will try to update and build this 1-4 times a month. Since this is a package set, at worst you'll have
+some local bloat, but you won't ever accidentally have to rebuild chromium like might happen with an overlay.
 
-aka, "Chrome on Wayland" for Linux, or at least NixOS users.
+<img src="./chromium.png" />
+
+## Packages
+
+ * `chromium-dev-wayland` - Chromium with Ozone (x11/wayland) and GTK/Glib enabled
 
 ## Usage
 
