@@ -243,7 +243,7 @@ let
   };
 in
   {
-    chromium-git-wayland-gtk = mkWrappedChromium {
+    chromium-git-wayland = mkWrappedChromium {
       version = (import ./metadata.nix).version;
       customGnFlags = {
         # https://cs.chromium.org/chromium/src/docs/ozone_overview.md?type=cs&q=use_glib&sq=package:chromium&g=0&l=293
@@ -252,17 +252,6 @@ in
         use_xkbcommon = true;
         use_glib = true;
         use_gtk = true;
-        ozone_platform = "wayland";
-        ozone_platform_headless = false;
-        ozone_platform_wayland = true;
-        ozone_platform_x11 = true;
-      };
-    };
-    chromium-git-wayland = mkWrappedChromium {
-      version = (import ./metadata.nix).version;
-      customGnFlags = {
-        # https://cs.chromium.org/chromium/src/docs/ozone_overview.md?type=cs&q=use_glib&sq=package:chromium&g=0&l=293
-        use_ozone = true;
         ozone_platform = "wayland";
         ozone_platform_headless = false;
         ozone_platform_wayland = true;
