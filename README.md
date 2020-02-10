@@ -18,6 +18,12 @@ some local bloat, but you won't ever accidentally have to rebuild chromium like 
 
 ## Usage
 
+#### Cachix
+
+See the usage instructions on [nixpkgs-wayland.cachix.org](nixpkgs-wayland.cachix.org) for instructions on how to use the Cachix binary cache so that you don't have to build `chromium-dev-wayland` yourself.
+
+#### Usage
+
 Quick test:
 
 ```nix-env -iA chromium-dev-wayland -f "https://github.com/colemickens/nixpkgs-chromium/archive/master.tar.gz"```
@@ -32,6 +38,11 @@ let
 in
 {
   config = {
+    nix = {
+      binaryCachePublicKeys = [ "nixpkgs-wayland.cachix.org-1:3lwxaILxMRkVhehr5StQprHdEo4IrE8sRho9R9HOLYA=" ];
+      binaryCaches = [ "https://nixpkgs-wayland.cachix.org" ];
+    };
+
     environment.systemPackages = [ nixpkgsChromiumPkgs.chromium-dev-wayland ];
   };
 }
