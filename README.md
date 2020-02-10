@@ -20,7 +20,7 @@ some local bloat, but you won't ever accidentally have to rebuild chromium like 
 
 #### Cachix
 
-See the usage instructions on [nixpkgs-wayland.cachix.org](nixpkgs-wayland.cachix.org) for instructions on how to use the Cachix binary cache so that you don't have to build `chromium-dev-wayland` yourself.
+See the usage instructions on [nixpkgs-wayland.cachix.org](nixpkgs-wayland.cachix.org) for instructions on how to use the Cachix binary cache so that you don't have to build `chromium-dev-wayland` yourself. (`nixpkgs-wayland` is correct, we're using it for `nixpkgs-chromium` packages as well.)
 
 #### Usage
 
@@ -40,6 +40,7 @@ in
 {
   config = {
     nix = {
+      # this is correct, we're using `nixpkgs-wayland` to cache `nixpkgs-chromium` packages
       binaryCachePublicKeys = [ "nixpkgs-wayland.cachix.org-1:3lwxaILxMRkVhehr5StQprHdEo4IrE8sRho9R9HOLYA=" ];
       binaryCaches = [ "https://nixpkgs-wayland.cachix.org" ];
     };
