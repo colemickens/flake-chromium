@@ -34,7 +34,8 @@ Using in your nixos `configuration.nix`:
 { pkgs, ...}:
 
 let
-  nixpkgsChromiumPkgs = import (builtins.fetchTarball { url = "https://github.com/colemickens/nixpkgs-chromium/archive/master.tar.gz"; }) { pkgs = pkgs; };
+  chrpkgsBall = builtins.fetchTarball { url = "https://github.com/colemickens/nixpkgs-chromium/archive/master.tar.gz"; };
+  chrpkgs = import chrpkgsBall;
 in
 {
   config = {
@@ -43,7 +44,7 @@ in
       binaryCaches = [ "https://nixpkgs-wayland.cachix.org" ];
     };
 
-    environment.systemPackages = [ nixpkgsChromiumPkgs.chromium-dev-wayland ];
+    environment.systemPackages = [ chrpkgs.chromium-dev-wayland ];
   };
 }
 ```
