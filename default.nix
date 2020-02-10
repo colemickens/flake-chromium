@@ -1,9 +1,11 @@
-{ pkgs }:
-
 let
-  c = pkgs.callPackages ./pkgs/chromium-git {};
+  pkgset = import (import ./nixpkgs/nixos-unstable) {
+    overlays = [
+      (self: super: rec {
+        chromium-pkgs = self.callPackages ./pkgs/chromium-git {};
+      })
+    ];
+  };
 in
-  {
-    chromium-dev-wayland = c.chromium-git-wayland;
-  }
+  pkgset.chromium-pkgs
 

@@ -243,7 +243,7 @@ let
   };
 in
   {
-    chromium-git-wayland = mkWrappedChromium {
+    chromium-dev-wayland = mkWrappedChromium {
       version = (import ./metadata.nix).version;
       customGnFlags = {
         # https://cs.chromium.org/chromium/src/docs/ozone_overview.md?type=cs&q=use_glib&sq=package:chromium&g=0&l=293

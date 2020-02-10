@@ -128,6 +128,6 @@ if [[ ! -f "pkgs/chromium-git/vendor-${version}.nix" ]]; then
   (cd pkgs/chromium-git; ./mk-vendor-file.pl "${version}";)
 fi
 
-nix-build build.nix \
+nix-build \
   --no-out-link --keep-going \
   | cachix push "${cache}"
