@@ -7,9 +7,12 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 # keep track of what we build for the README
 pkgentries=(); nixpkgentries=();
-cache="nixpkgs-wayland";
+cache="nixpkgs-chromium";
+build_attr="${1:-"waylandPkgs"}"
 
 up=0 # updated_performed # up=$(( $up + 1 ))
+
+export NIX_PATH="nixpkgs=https://github.com/nixos/nixpkgs/archive/nixos-unstable.tar.gz"
 
 function update() {
   typ="${1}"
@@ -18,29 +21,31 @@ function update() {
   metadata="${pkg}/metadata.nix"
   pkgname="$(basename "${pkg}")"
 
-  skip="$(nix eval -f "${metadata}" skip || true)"
-  if [[ "${skip}" != "true" ]]; then
-    branch="$(nix eval --raw -f "${metadata}" branch)"
-    rev="$(nix eval --raw -f "${metadata}" rev)"
-    date="$(nix eval --raw -f "${metadata}" revdate)"
-    sha256="$(nix eval --raw -f "${metadata}" sha256)"
+  branch="$(nix-instantiate "${metadata}" --eval --json -A branch | jq -r .)"
+  rev="$(nix-instantiate "${metadata}" --eval --json -A rev | jq -r .)"
+  date="$(nix-instantiate "${metadata}" --eval --json -A revdate | jq -r .)"
+  sha256="$(nix-instantiate "${metadata}" --eval --json -A sha256 | jq -r .)"
+  upattr="$(nix-instantiate "${metadata}" --eval --json -A upattr | jq -r . || echo "\"${pkgname}\"" | jq -r .)"
+  url="$(nix-instantiate "${metadata}" --eval --json -A url | jq -r . || echo "\"\"" | jq -r .)"
+  skip="$(nix-instantiate "${metadata}" --eval --json -A skip | jq -r . || echo "false" | jq -r .)"
 
-    newdate="${date}"
+  newdate="${date}"
+  if [[ "${skip}" != "true" ]]; then
     # Determine RepoTyp (git/hg)
-    if   nix eval --raw -f "${metadata}" repo_git; then repotyp="git";
-    elif nix eval --raw -f "${metadata}" repo_hg;  then repotyp="hg";
+    if   nix-instantiate "${metadata}" --eval --json -A repo_git; then repotyp="git";
+    elif nix-instantiate "${metadata}" --eval --json -A repo_hg; then repotyp="hg";
     else echo "unknown repo_typ" && exit -1;
     fi
 
     # Update Rev
     if [[ "${repotyp}" == "git" ]]; then
-      repo="$(nix eval --raw -f "${metadata}" repo_git)"
+      repo="$(nix-instantiate "${metadata}" --eval --json -A repo_git | jq -r .)"
       newrev="$(git ls-remote "${repo}" "${branch}" | awk '{ print $1}')"
     elif [[ "${repotyp}" == "hg" ]]; then
-      repo="$(nix eval --raw -f "${metadata}" repo_hg)"
+      repo="$(nix-instantiate "${metadata}" --eval --json -A repo_hg | jq -r .)"
       newrev="$(hg identify "${repo}" -r "${branch}")"
     fi
-    
+
     if [[ "${rev}" != "${newrev}" ]]; then
       up=$(( $up + 1 ))
 
@@ -56,18 +61,12 @@ function update() {
       rm -rf "${d}"
 
       # Update Sha256
-      # TODO: nix-prefetch without NIX_PATH?
       if [[ "${typ}" == "pkgs" ]]; then
-        newsha256="$(NIX_PATH=nixpkgs=https://github.com/nixos/nixpkgs/archive/nixos-unstable.tar.gz \
-          nix-prefetch \
-            -E "(import ./build.nix).nixosUnstable.${pkgname}" \
-            --rev "${newrev}" \
-            --output raw)"
+        newsha256="$(nix-prefetch --output raw \
+            -E "(import ./build.nix).${upattr}" \
+            --rev "${newrev}")"
       elif [[ "${typ}" == "nixpkgs" ]]; then
-        # TODO: why can't nix-prefetch handle this???
-        url="$(nix eval --raw -f "${metadata}" url)"
-        newsha256="$(NIX_PATH=nixpkgs=https://github.com/nixos/nixpkgs/archive/nixos-unstable.tar.gz \
-          nix-prefetch-url --unpack "${url}")"
+        newsha256="$(nix-prefetch-url --unpack "${url}")"
       fi
 
       # TODO: do this with nix instead of sed?
@@ -81,8 +80,9 @@ function update() {
     newdate="${newdate} (pinned)"
   fi
   if [[ "${typ}" == "pkgs" ]]; then
-    desc="$(nix eval --raw "(import ./build.nix).nixosUnstable.${pkgname}.meta.description")"
-    home="$(nix eval --raw "(import ./build.nix).nixosUnstable.${pkgname}.meta.homepage")"
+    # TODO: Remove usage of Nix CLI v2
+    desc="$(nix eval --raw "(import ./build.nix).${upattr}.meta.description")"
+    home="$(nix eval --raw "(import ./build.nix).${upattr}.meta.homepage")"
     pkgentries=("${pkgentries[@]}" "| [${pkgname}](${home}) | ${newdate} | ${desc} |");
   elif [[ "${typ}" == "nixpkgs" ]]; then
     nixpkgentries=("${nixpkgentries[@]}" "| ${pkgname} | ${newdate} |");
@@ -120,18 +120,33 @@ for p in nixpkgs/*; do
   update "nixpkgs" "${p}"
 done
 
-# set +e; version="$(git ls-remote --tag https://github.com/chromium/chromium | cut -d'	' -f2 | \
-#   rg "refs/tags/(\d+.\d+.\d+.\d+)" -r '$1' | sort -hr | head -1)"; set -e
+for p in pkgs/*; do
+  update "pkgs" "${p}"
+done
 
-# echo "{ version = \"${version}\"; }" > "./pkgs/chromium-git/metadata.nix"
-# if [[ ! -f "pkgs/chromium-git/vendor-${version}.nix" ]]; then
-#   (cd pkgs/chromium-git; ./mk-vendor-file.pl "${version}";)
-# fi
+if [[ "${CI_BUILD}" == "sr.ht" ]]; then
+  echo "updated packages: ${up}" &>/dev/stderr
+  if $(( ${up} <= 0 )); then
+    echo "refusing to proceed, no packages were updated." &>/dev/stderr
+    # This prevents an unnecessary re-download of Nix deps when there's no new work to do.
+    # This isn't 100% great since I guess somehow we could wind up missing a package
+    # upload and never try again, but that's very unlikely and would be resolved quickly
+    # anyway.
+    exit 0
+  fi
+fi
+
+update_readme
 
 rm -rf ./pkgs/chromium-git/vendor-chromium-git
 cp -a ./nixpkgs-windows/pkgs/applications/networking/browsers/chromium-git \
   ./pkgs/chromium-git/vendor-chromium-git
 
-nix-build \
+cachix push -w "${cache}" &
+CACHIX_PID="$!"
+trap "kill ${CACHIX_PID}" EXIT
+
+./nixbuild.sh build.nix \
   --no-out-link --keep-going \
   | cachix push "${cache}"
+
