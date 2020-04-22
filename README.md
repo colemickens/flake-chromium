@@ -12,9 +12,21 @@ some local bloat, but you won't ever accidentally have to rebuild chromium like 
 
 <img src="./chromium.png" />
 
+## Repo Explanation
+
+In my local checkout, I have volth's `nixpkgs-windows` repo (`chromium-git` branch) cloned in a directory.
+I apply/extract the patch `./volth-chromium-git.patch` that makes volth's chromium-git derivation a callable function.
+
+I copy their entire derivation into `./pkgs/chromium-git/vendor-chromium-git`.
+
+`./update-chromium-version.sh` gets the latest tagged release, writes it into `./pkgs/chromium-git/metadata.nix`
+and then calls volth's perl script to write out the vendor nix locked deps if it hasn't been made yet.
+
+`./update.sh` updates the nixpkgs ref, calls `./update-chromium-version.sh` and then builds chromium + pushes to cachix.
+
 ## Packages
 
- * `chromium-dev-wayland` - Chromium with Ozone (x11/wayland) and GTK/Glib enabled
+ * `chromium-dev-ozone` - Chromium with Ozone (x11/wayland) and GTK/Glib enabled
 
 ## Usage
 
@@ -26,7 +38,7 @@ See the usage instructions on [nixpkgs-wayland.cachix.org](nixpkgs-wayland.cachi
 
 Quick test:
 
-```nix-env -iA chromium-dev-wayland -f "https://github.com/colemickens/nixpkgs-chromium/archive/master.tar.gz"```
+```nix-env -iA chromium-dev-ozone -f "https://github.com/colemickens/nixpkgs-chromium/archive/master.tar.gz"```
 
 Using in your nixos `configuration.nix`:
 
@@ -45,7 +57,7 @@ in
       binaryCaches = [ "https://nixpkgs-wayland.cachix.org" ];
     };
 
-    environment.systemPackages = [ chrpkgs.chromium-dev-wayland ];
+    environment.systemPackages = [ chrpkgs.chromium-dev-ozone ];
   };
 }
 ```

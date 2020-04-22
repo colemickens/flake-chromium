@@ -2,10 +2,10 @@ let
   pkgset = import (import ./nixpkgs/nixos-unstable) {
     overlays = [
       (self: super: rec {
-        chromium-pkgs = self.callPackages ./pkgs/chromium-git {};
+        inherit (self.callPackages ./pkgs/chromium-git {})
+          chromium-dev-ozone;
       })
     ];
   };
 in
-  pkgset.chromium-pkgs
-
+  pkgset.chromium-dev-ozone
