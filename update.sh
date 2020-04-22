@@ -120,13 +120,17 @@ for p in nixpkgs/*; do
   update "nixpkgs" "${p}"
 done
 
-set +e; version="$(git ls-remote --tag https://github.com/chromium/chromium | cut -d'	' -f2 | \
-  rg "refs/tags/(\d+.\d+.\d+.\d+)" -r '$1' | sort -hr | head -1)"; set -e
+# set +e; version="$(git ls-remote --tag https://github.com/chromium/chromium | cut -d'	' -f2 | \
+#   rg "refs/tags/(\d+.\d+.\d+.\d+)" -r '$1' | sort -hr | head -1)"; set -e
 
-echo "{ version = \"${version}\"; }" > "./pkgs/chromium-git/metadata.nix"
-if [[ ! -f "pkgs/chromium-git/vendor-${version}.nix" ]]; then
-  (cd pkgs/chromium-git; ./mk-vendor-file.pl "${version}";)
-fi
+# echo "{ version = \"${version}\"; }" > "./pkgs/chromium-git/metadata.nix"
+# if [[ ! -f "pkgs/chromium-git/vendor-${version}.nix" ]]; then
+#   (cd pkgs/chromium-git; ./mk-vendor-file.pl "${version}";)
+# fi
+
+rm -rf ./pkgs/chromium-git/vendor-chromium-git
+cp -a ./nixpkgs-windows/pkgs/applications/networking/browsers/chromium-git \
+  ./pkgs/chromium-git/vendor-chromium-git
 
 nix-build \
   --no-out-link --keep-going \
