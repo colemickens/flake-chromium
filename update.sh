@@ -7,7 +7,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 # keep track of what we build for the README
 pkgentries=(); nixpkgentries=();
-cache="nixpkgs-chromium";
+cache="nixpkgs-wayland";
 build_attr="${1:-"waylandPkgs"}"
 
 up=0 # updated_performed # up=$(( $up + 1 ))
@@ -89,52 +89,20 @@ function update() {
   fi
 }
 
-function update_readme() {
-  replace="$(printf "<!--pkgs-->")"
-  replace="$(printf "%s\n| Package | Last Update | Description |" "${replace}")"
-  replace="$(printf "%s\n| ------- | ----------- | ----------- |" "${replace}")"
-  for p in "${pkgentries[@]}"; do
-    replace="$(printf "%s\n%s\n" "${replace}" "${p}")"
-  done
-  replace="$(printf "%s\n<!--pkgs-->" "${replace}")"
-
-  rg --multiline '(?s)(.*)<!--pkgs-->(.*)<!--pkgs-->(.*)' "README.md" \
-    --replace "\$1${replace}\$3" \
-      > README2.md; mv README2.md README.md
-
-  replace="$(printf "<!--nixpkgs-->")"
-  replace="$(printf "%s\n| Channel | Last Channel Commit Time |" "${replace}")"
-  replace="$(printf "%s\n| ------- | ------------------------ |" "${replace}")"
-  for p in "${nixpkgentries[@]}"; do
-    replace="$(printf "%s\n%s\n" "${replace}" "${p}")"
-  done
-  replace="$(printf "%s\n<!--nixpkgs-->" "${replace}")"
-  set -x
-
-  rg --multiline '(?s)(.*)<!--nixpkgs-->(.*)<!--nixpkgs-->(.*)' "README.md" \
-    --replace "\$1${replace}\$3" \
-      > README2.md; mv README2.md README.md
-}
-
 for p in nixpkgs/*; do
   update "nixpkgs" "${p}"
 done
 
-#for p in pkgs/*; do
-#  update "pkgs" "${p}"
-#done
-
-update_readme
-
 rm -rf ./pkgs/chromium-git/vendor-chromium-git
 cp -a ./nixpkgs-windows/pkgs/applications/networking/browsers/chromium-git \
   ./pkgs/chromium-git/vendor-chromium-git
+(cd ./nixpkgs-windows; git format-patch -1 --stdout > ../volth-chromium-git.patch)
 
 cachix push -w "${cache}" &
 CACHIX_PID="$!"
 trap "kill ${CACHIX_PID}" EXIT
 
-./nixbuild.sh build.nix \
+nix-build \
   --no-out-link --keep-going \
   | cachix push "${cache}"
 
