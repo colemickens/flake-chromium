@@ -17,7 +17,7 @@ If this were XWayland it would be noticeable blurry.)
 
 ## Repo Explanation
 
-This is only possible because of [volth]'s `nixpkgs-windows` repo and the `chromium-git` branch. I clone this into `./nixpkgs-windows`,
+This is only possible because of [volth](https://github.com/volth)'s `nixpkgs-windows` repo and the `chromium-git` branch. I clone this into `./nixpkgs-windows`,
 wrote and carry a small patch that lets me re-use some of the nix functions inside volth's work. (This patch is also then extracted and
 available in the repo to show how small it is.). This patched derivation exists at `./pkgs/chromium-git/vendor-chromium-git`.
 
