@@ -12,6 +12,9 @@ some local bloat, but you won't ever accidentally have to rebuild chromium like 
 
 <img src="./chromium.png" />
 
+(This screenshot shows Chromium running on a Wayland output scaled to `1.2`.
+If this were XWayland it would be noticeable blurry.)
+
 ## Repo Explanation
 
 This is only possible because of [volth]'s `nixpkgs-windows` repo and the `chromium-git` branch. I clone this into `./nixpkgs-windows`,
