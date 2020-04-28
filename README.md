@@ -16,15 +16,22 @@ some local bloat, but you won't ever accidentally have to rebuild chromium like 
 
 ## Repo Explanation
 
-This is only possible because of [volth](https://github.com/volth)'s `nixpkgs-windows` repo and the `chromium-git` branch. I clone this into `./nixpkgs-windows`,
-wrote and carry a small patch that lets me re-use some of the nix functions inside volth's work. (This patch is also then extracted and
-available in the repo to show how small it is.). This patched derivation exists at `./pkgs/chromium-git/vendor-chromium-git`.
+* This repo uses and wraps [volth](https://github.com/volth)'s `chromium-git` branch (from their `nixpkgs-windows` repo).
 
-`./update-chromium-version.sh` use `git` to determine the newest upstream chromium git
-and writes it into `./pkgs/chromium-git/metadata.nix`. It then calls volth's perl script
-to determine and write out the` vendor-{version}.nix` lock file, if it hasn't already been generated.
+* I cloned this into `./nixpkgs-windows`, and authored a small commit that lets me re-use volth's chromium build infra
+while also having custom GN Flags and custom build inputs easily.
 
-`./update.sh` updates the nixpkgs ref, calls `./update-chromium-version.sh` and then builds chromium + pushes to cachix.
+* `./update.sh` will:
+  * updates the nixpkgs reference that we build against
+  * call `git format-patch` to extract a nicely viewable version of my commit on volth's repo (just in case I delete my fork on accident)
+  * copies that modified copy of the `chromium-git` derivation to `./pkgs/chromium-git/vendor-chromium-git` so that my wrapper can use it
+  * `chromium-dev-ozone` and pushes it to cachix.
+
+* `./update-chromium-version.sh` will:
+  * use `git` to determine the newest upstream chromium git
+  * write it into `./pkgs/chromium-git/metadata.nix`
+  * call volth's perl script to build the` vendor-{version}.nix` lock file, if it hasn't already been generated
+
 
 ## Packages
 
