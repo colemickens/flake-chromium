@@ -1,7 +1,7 @@
-From 7dc41e527c8a91deb321462def23249a210c5cd8 Mon Sep 17 00:00:00 2001
+From ae4798190eeeca82a80cb5c35c06375a26dc9ea2 Mon Sep 17 00:00:00 2001
 From: Cole Mickens <cole.mickens@gmail.com>
-Date: Fri, 3 Apr 2020 13:09:24 -0700
-Subject: [PATCH] chromium-git: make usable from outside
+Date: Tue, 28 Apr 2020 06:52:47 +0000
+Subject: [PATCH] chromium-git: expose function
 
 ---
  .../networking/browsers/chromium-git/default.nix    | 13 +++++++------

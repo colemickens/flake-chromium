@@ -1,9 +1,12 @@
-{ pkgs, stdenv, libglvnd, wayland, makeWrapper, ed, llvmPackages_10 }:
+{ pkgs, stdenv
+, wayland, libglvnd, libxkbcommon
+, makeWrapper, ed, llvmPackages_10
+}:
 
 let
-  common = 
+  common =
     (pkgs.callPackages ./vendor-chromium-git {}).chromium-common;
-  
+
   mkWrappedChromium = { version, llvmPackages, customGnFlags?{}, extraBuildInputs?[] }:
     let chromiumBuild = (common { inherit version llvmPackages customGnFlags extraBuildInputs; }); in
     stdenv.mkDerivation {
@@ -13,7 +16,7 @@ let
       buildInputs = [ makeWrapper ed ];
       outputs = [ "out" ];
 
-      buildCommand = 
+      buildCommand =
     let
       libPath = stdenv.lib.makeLibraryPath([]
         #++ stdenv.lib.optional useVaapi libva
@@ -48,8 +51,7 @@ let
 in
   {
     chromium-dev-ozone = mkWrappedChromium {
-      #version = (import ./metadata.nix).version;
-      version = "84.0.4118.0";
+      version = (import ./metadata.nix).version;
       llvmPackages = llvmPackages_10;
       customGnFlags = {
         # https://cs.chromium.org/chromium/src/docs/ozone_overview.md?type=cs&q=use_glib&sq=package:chromium&g=0&l=293
@@ -64,7 +66,7 @@ in
         ozone_platform_x11 = true;
       };
       extraBuildInputs = [
-        wayland libglvnd
+        wayland libglvnd libxkbcommon
       ];
     };
   }

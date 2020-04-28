@@ -93,16 +93,30 @@ for p in nixpkgs/*; do
   update "nixpkgs" "${p}"
 done
 
-rm -rf ./pkgs/chromium-git/vendor-chromium-git
-cp -a ./nixpkgs-windows/pkgs/applications/networking/browsers/chromium-git \
-  ./pkgs/chromium-git/vendor-chromium-git
-(cd ./nixpkgs-windows; git format-patch -1 --stdout > ../volth-chromium-git.patch)
+####### Update from volth's git copy
+#       (also, make a backup of the patch since we gitignore our fork)
+if [[ -d ./nixpkgs-windows ]]; then
+  # DEV MACHINE
+  # copy from the volth working area where I develop
+  mkdir -p ./pkgs/chromium-git/vendor-chromium-git
+  cp -a ./nixpkgs-windows/pkgs/applications/networking/browsers/chromium-git/* \
+    ./pkgs/chromium-git/vendor-chromium-git/
+  (cd ./nixpkgs-windows; git format-patch -1 --stdout > ../volth-chromium-git.patch)
+else
+  # CI MACHINE ??
+  ./update-chromium-version.sh # might as well
+  # then go on to build...
+fi
 
+
+####### Build + push as normal
 cachix push -w "${cache}" &
 CACHIX_PID="$!"
 trap "kill ${CACHIX_PID}" EXIT
 
 nix-build \
+  --option "extra-binary-caches" "https://cache.nixos.org https://colemickens.cachix.org https://nixpkgs-wayland.cachix.org" \
+  --option "trusted-public-keys" "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= colemickens.cachix.org-1:oIGbn9aolUT2qKqC78scPcDL6nz7Npgotu644V4aGl4= nixpkgs-wayland.cachix.org-1:3lwxaILxMRkVhehr5StQprHdEo4IrE8sRho9R9HOLYA=" \
+  --option "build-cores" "0" \
   --no-out-link --keep-going \
   | cachix push "${cache}"
-
