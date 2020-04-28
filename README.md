@@ -1,26 +1,26 @@
 # nixpkgs-chromium
 
-(related: [nixpkgs-wayland](https://github.com/colemickens/nixpkgs-wayland)
-and [nixpkgs-graphics](https://github.com/colemickens/nixpkgs-graphics))
+(related: [nixpkgs-wayland](https://github.com/colemickens/nixpkgs-wayland))
 
 ## Overview
 
-This is a package-set for NixOS or nixpkgs that contains builds of Chromium for Wayland (aka Chromium built with the X11 and Wayland backends for Ozone).
+This is a Nix package set meant for NixOS users on the `nixos-unstable` channel.
+It currently contains a single package: `chromium-dev-ozone` which is Chromium built with Ozone (with x11/wayland enabled).
 
-I will try to update and build this 1-4 times a month. Since this is a package set, at worst you'll have
+I will try to update this monthly at least. Since this is a package set, at worst you'll have
 some local bloat, but you won't ever accidentally have to rebuild chromium like might happen with an overlay.
 
 <img src="./chromium.png" />
 
 ## Repo Explanation
 
-In my local checkout, I have volth's `nixpkgs-windows` repo (`chromium-git` branch) cloned in a directory.
-I apply/extract the patch `./volth-chromium-git.patch` that makes volth's chromium-git derivation a callable function.
+This is only possible because of [volth]'s `nixpkgs-windows` repo and the `chromium-git` branch. I clone this into `./nixpkgs-windows`,
+wrote and carry a small patch that lets me re-use some of the nix functions inside volth's work. (This patch is also then extracted and
+available in the repo to show how small it is.). This patched derivation exists at `./pkgs/chromium-git/vendor-chromium-git`.
 
-I copy their entire derivation into `./pkgs/chromium-git/vendor-chromium-git`.
-
-`./update-chromium-version.sh` gets the latest tagged release, writes it into `./pkgs/chromium-git/metadata.nix`
-and then calls volth's perl script to write out the vendor nix locked deps if it hasn't been made yet.
+`./update-chromium-version.sh` use `git` to determine the newest upstream chromium git
+and writes it into `./pkgs/chromium-git/metadata.nix`. It then calls volth's perl script
+to determine and write out the` vendor-{version}.nix` lock file, if it hasn't already been generated.
 
 `./update.sh` updates the nixpkgs ref, calls `./update-chromium-version.sh` and then builds chromium + pushes to cachix.
 
