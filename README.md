@@ -12,8 +12,7 @@ some local bloat, but you won't ever accidentally have to rebuild chromium like 
 
 <img src="./chromium.png" />
 
-(This screenshot shows Chromium running on a Wayland output scaled to `1.2`.
-If this were XWayland it would be noticeable blurry.)
+(Shown: Chromium running on a Wayland output scaled to `1.2`. If this were XWayland it would be blurry.)
 
 ## Repo Explanation
 
