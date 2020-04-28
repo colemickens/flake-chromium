@@ -56,7 +56,7 @@ Using in your nixos `configuration.nix`:
 
 let
   chrpkgsBall = builtins.fetchTarball { url = "https://github.com/colemickens/nixpkgs-chromium/archive/master.tar.gz"; };
-  chrpkgs = import chrpkgsBall;
+  chromium-dev-ozone = import chrpkgsBall;
 in
 {
   config = {
@@ -66,7 +66,7 @@ in
       binaryCaches = [ "https://nixpkgs-wayland.cachix.org" ];
     };
 
-    environment.systemPackages = [ chrpkgs.chromium-dev-ozone ];
+    environment.systemPackages = [ chromium-dev-ozone ];
   };
 }
 ```
