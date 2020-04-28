@@ -8,8 +8,11 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 # keep track of what we build for the README
 pkgentries=(); nixpkgentries=();
 cache="nixpkgs-wayland";
+build_attr="${1:-"waylandPkgs"}"
 
 up=0 # updated_performed # up=$(( $up + 1 ))
+
+export NIX_PATH="nixpkgs=https://github.com/nixos/nixpkgs/archive/nixos-unstable.tar.gz"
 
 function update() {
   typ="${1}"
@@ -18,29 +21,31 @@ function update() {
   metadata="${pkg}/metadata.nix"
   pkgname="$(basename "${pkg}")"
 
-  skip="$(nix eval -f "${metadata}" skip || true)"
-  if [[ "${skip}" != "true" ]]; then
-    branch="$(nix eval --raw -f "${metadata}" branch)"
-    rev="$(nix eval --raw -f "${metadata}" rev)"
-    date="$(nix eval --raw -f "${metadata}" revdate)"
-    sha256="$(nix eval --raw -f "${metadata}" sha256)"
+  branch="$(nix-instantiate "${metadata}" --eval --json -A branch | jq -r .)"
+  rev="$(nix-instantiate "${metadata}" --eval --json -A rev | jq -r .)"
+  date="$(nix-instantiate "${metadata}" --eval --json -A revdate | jq -r .)"
+  sha256="$(nix-instantiate "${metadata}" --eval --json -A sha256 | jq -r .)"
+  upattr="$(nix-instantiate "${metadata}" --eval --json -A upattr | jq -r . || echo "\"${pkgname}\"" | jq -r .)"
+  url="$(nix-instantiate "${metadata}" --eval --json -A url | jq -r . || echo "\"\"" | jq -r .)"
+  skip="$(nix-instantiate "${metadata}" --eval --json -A skip | jq -r . || echo "false" | jq -r .)"
 
-    newdate="${date}"
+  newdate="${date}"
+  if [[ "${skip}" != "true" ]]; then
     # Determine RepoTyp (git/hg)
-    if   nix eval --raw -f "${metadata}" repo_git; then repotyp="git";
-    elif nix eval --raw -f "${metadata}" repo_hg;  then repotyp="hg";
+    if   nix-instantiate "${metadata}" --eval --json -A repo_git; then repotyp="git";
+    elif nix-instantiate "${metadata}" --eval --json -A repo_hg; then repotyp="hg";
     else echo "unknown repo_typ" && exit -1;
     fi
 
     # Update Rev
     if [[ "${repotyp}" == "git" ]]; then
-      repo="$(nix eval --raw -f "${metadata}" repo_git)"
+      repo="$(nix-instantiate "${metadata}" --eval --json -A repo_git | jq -r .)"
       newrev="$(git ls-remote "${repo}" "${branch}" | awk '{ print $1}')"
     elif [[ "${repotyp}" == "hg" ]]; then
-      repo="$(nix eval --raw -f "${metadata}" repo_hg)"
+      repo="$(nix-instantiate "${metadata}" --eval --json -A repo_hg | jq -r .)"
       newrev="$(hg identify "${repo}" -r "${branch}")"
     fi
-    
+
     if [[ "${rev}" != "${newrev}" ]]; then
       up=$(( $up + 1 ))
 
@@ -56,18 +61,12 @@ function update() {
       rm -rf "${d}"
 
       # Update Sha256
-      # TODO: nix-prefetch without NIX_PATH?
       if [[ "${typ}" == "pkgs" ]]; then
-        newsha256="$(NIX_PATH=nixpkgs=https://github.com/nixos/nixpkgs/archive/nixos-unstable.tar.gz \
-          nix-prefetch \
-            -E "(import ./build.nix).nixosUnstable.${pkgname}" \
-            --rev "${newrev}" \
-            --output raw)"
+        newsha256="$(nix-prefetch --output raw \
+            -E "(import ./build.nix).${upattr}" \
+            --rev "${newrev}")"
       elif [[ "${typ}" == "nixpkgs" ]]; then
-        # TODO: why can't nix-prefetch handle this???
-        url="$(nix eval --raw -f "${metadata}" url)"
-        newsha256="$(NIX_PATH=nixpkgs=https://github.com/nixos/nixpkgs/archive/nixos-unstable.tar.gz \
-          nix-prefetch-url --unpack "${url}")"
+        newsha256="$(nix-prefetch-url --unpack "${url}")"
       fi
 
       # TODO: do this with nix instead of sed?
@@ -81,53 +80,43 @@ function update() {
     newdate="${newdate} (pinned)"
   fi
   if [[ "${typ}" == "pkgs" ]]; then
-    desc="$(nix eval --raw "(import ./build.nix).nixosUnstable.${pkgname}.meta.description")"
-    home="$(nix eval --raw "(import ./build.nix).nixosUnstable.${pkgname}.meta.homepage")"
+    # TODO: Remove usage of Nix CLI v2
+    desc="$(nix eval --raw "(import ./build.nix).${upattr}.meta.description")"
+    home="$(nix eval --raw "(import ./build.nix).${upattr}.meta.homepage")"
     pkgentries=("${pkgentries[@]}" "| [${pkgname}](${home}) | ${newdate} | ${desc} |");
   elif [[ "${typ}" == "nixpkgs" ]]; then
     nixpkgentries=("${nixpkgentries[@]}" "| ${pkgname} | ${newdate} |");
   fi
 }
 
-function update_readme() {
-  replace="$(printf "<!--pkgs-->")"
-  replace="$(printf "%s\n| Package | Last Update | Description |" "${replace}")"
-  replace="$(printf "%s\n| ------- | ----------- | ----------- |" "${replace}")"
-  for p in "${pkgentries[@]}"; do
-    replace="$(printf "%s\n%s\n" "${replace}" "${p}")"
-  done
-  replace="$(printf "%s\n<!--pkgs-->" "${replace}")"
-
-  rg --multiline '(?s)(.*)<!--pkgs-->(.*)<!--pkgs-->(.*)' "README.md" \
-    --replace "\$1${replace}\$3" \
-      > README2.md; mv README2.md README.md
-
-  replace="$(printf "<!--nixpkgs-->")"
-  replace="$(printf "%s\n| Channel | Last Channel Commit Time |" "${replace}")"
-  replace="$(printf "%s\n| ------- | ------------------------ |" "${replace}")"
-  for p in "${nixpkgentries[@]}"; do
-    replace="$(printf "%s\n%s\n" "${replace}" "${p}")"
-  done
-  replace="$(printf "%s\n<!--nixpkgs-->" "${replace}")"
-  set -x
-
-  rg --multiline '(?s)(.*)<!--nixpkgs-->(.*)<!--nixpkgs-->(.*)' "README.md" \
-    --replace "\$1${replace}\$3" \
-      > README2.md; mv README2.md README.md
-}
-
 for p in nixpkgs/*; do
   update "nixpkgs" "${p}"
 done
 
-set +e; version="$(git ls-remote --tag https://github.com/chromium/chromium | cut -d'	' -f2 | \
-  rg "refs/tags/(\d+.\d+.\d+.\d+)" -r '$1' | sort -hr | head -1)"; set -e
-
-echo "{ version = \"${version}\"; }" > "./pkgs/chromium-git/metadata.nix"
-if [[ ! -f "pkgs/chromium-git/vendor-${version}.nix" ]]; then
-  (cd pkgs/chromium-git; ./mk-vendor-file.pl "${version}";)
+####### Update from volth's git copy
+#       (also, make a backup of the patch since we gitignore our fork)
+if [[ -d ./nixpkgs-windows ]]; then
+  # DEV MACHINE
+  # copy from the volth working area where I develop
+  mkdir -p ./pkgs/chromium-git/vendor-chromium-git
+  cp -a ./nixpkgs-windows/pkgs/applications/networking/browsers/chromium-git/* \
+    ./pkgs/chromium-git/vendor-chromium-git/
+  (cd ./nixpkgs-windows; git format-patch -1 --stdout > ../volth-chromium-git.patch)
+else
+  # CI MACHINE ??
+  ./update-chromium-version.sh # might as well
+  # then go on to build...
 fi
 
+
+####### Build + push as normal
+cachix push -w "${cache}" &
+CACHIX_PID="$!"
+trap "kill ${CACHIX_PID}" EXIT
+
 nix-build \
+  --option "extra-binary-caches" "https://cache.nixos.org https://colemickens.cachix.org https://nixpkgs-wayland.cachix.org" \
+  --option "trusted-public-keys" "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= colemickens.cachix.org-1:oIGbn9aolUT2qKqC78scPcDL6nz7Npgotu644V4aGl4= nixpkgs-wayland.cachix.org-1:3lwxaILxMRkVhehr5StQprHdEo4IrE8sRho9R9HOLYA=" \
+  --option "build-cores" "0" \
   --no-out-link --keep-going \
   | cachix push "${cache}"
